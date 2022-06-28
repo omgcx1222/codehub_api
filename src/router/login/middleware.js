@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken')
 
 const common = require('../../common/common-service')
+const service = require('./service')
 const errorType = require('../../util/error-type')
 const md5password = require('../../util/md5password')
 const { PRIVATE_KEY } = require('../../app/config')
@@ -38,7 +39,7 @@ class LoginMiddleware {
   // 登录通过
   async login(ctx, next) {
     // 获取用户信息
-    const { id, username, nickname, avatar_url } = ctx.user
+    const { id, username, nickname, avatar_url, signature } = ctx.user
     
     // 颁发token
     const token = jwt.sign({ id, username }, PRIVATE_KEY, {
@@ -47,8 +48,25 @@ class LoginMiddleware {
       algorithm: "RS256"
     })
 
+    // 获取关注个数
+    const { followCount } = await service.followCount(id)
+
+    // 获取粉丝个数及排行
+    const { fansCount } = await service.fansCount(id)
+
+    // 获取粉丝排名
+    const rank1000 = await common.fansRank(0, 1000)
+    let userRank = rank1000.findIndex(item => item.userId === id)
+    if(userRank === -1) {
+      userRank = '1000+'
+    }else {
+      userRank += 1
+    }
+    
+    // 获取获赞个数
+    const { getAgreeCount } = await service.getAgreeCount(id)
     // 返回登录结果
-    ctx.body = { id, username, nickname, avatarUrl: avatar_url, token }
+    ctx.body = { id, username, nickname, avatarUrl: avatar_url, signature, followCount, fansCount, getAgreeCount, userRank, token }
   }
 }
 

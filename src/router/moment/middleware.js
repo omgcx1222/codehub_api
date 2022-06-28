@@ -57,7 +57,7 @@ class MomentMiddleware {
     // 未登录
     else {
       // if(!userId) return ctx.app.emit('error', new Error(PARAMS_ERROR), ctx)
-      const result = await allList(order, offset, limit)
+      const result = await listByNull(order, offset, limit)
       ctx.body = result
     }
     

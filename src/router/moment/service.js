@@ -47,7 +47,7 @@ class MomentService {
     }
   }
 
-  // 获取label获取动态列表
+  // 已登录获取动态列表
   async listByUserId(id, order, offset, limit) {
     const statement = `
       SELECT m.id momentId, m.content content, m.createTime createTime, m.updateTime updateTime,
@@ -75,7 +75,8 @@ class MomentService {
     }
   }
 
-  async allList(order, offset, limit) {
+  // 未登录获取动态列表
+  async listByNull(order, offset, limit) {
     const statement = `
       SELECT m.id momentId, m.content content, m.createTime createTime, m.updateTime updateTime,
         JSON_OBJECT('id', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url) author,

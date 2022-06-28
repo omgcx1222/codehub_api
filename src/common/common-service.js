@@ -65,6 +65,16 @@ class CommonService {
     const [result] = await connection.execute(statement, [userId, id])
     return result
   }
+
+  // 粉丝排行榜
+  async fansRank(start='0', end='1000') {
+    start = String(start)
+    end = String(end)
+    const statement = "SELECT count(*) as count, user_id userId FROM users_fans GROUP BY user_id ORDER BY count DESC LIMIT ?, ?"
+
+    const [result] = await connection.execute(statement, [start, end])
+    return result
+  }
 }
 
 module.exports = new CommonService()
