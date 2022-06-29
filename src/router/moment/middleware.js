@@ -1,7 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 
-const { insertMoment, detail, listByUserId, allList, update, remove, picture } = require('./service')
+const { insertMoment, detail, listByUserId, listByNull, update, remove, picture } = require('./service')
 const { CONTENT, PARAMS_ERROR } = require('../../util/error-type')
 const { PICTURE_PATH } = require('../../util/file-path')
 const { agreeExist, agree, deleteAgree } = require('../../common/common-service')
@@ -19,12 +19,8 @@ class MomentMiddleware {
       return ctx.app.emit('error', err, ctx)
     }
 
-    try {
-      const result = await insertMoment(id, content)
-      ctx.body = { message: '发表动态成功', id: result.insertId }
-    } catch (error) {
-      ctx.body = "发表动态失败，标签id不存在：" + error.message
-    }
+    const result = await insertMoment(id, content)
+    ctx.body = { message: '发表动态成功', id: result.insertId }
   }
 
   // 获取动态详情
@@ -39,16 +35,6 @@ class MomentMiddleware {
     const userId = ctx.user?.id
     let { order='0', offset='0', limit='10' } = ctx.query
     // 0-最新 1-最热 2-关注
-    // switch(order) {
-    //   case 1: 
-    //     order = 'agree';
-    //     break;
-    //   case 2: 
-    //     order = 'follow';
-    //     break;
-    //   default:
-    //     order = 'm.updateTime'
-    // }
     // 用户已登录
     if(userId) {
       const result = await listByUserId(userId, order, offset, limit)
@@ -56,7 +42,6 @@ class MomentMiddleware {
     }
     // 未登录
     else {
-      // if(!userId) return ctx.app.emit('error', new Error(PARAMS_ERROR), ctx)
       const result = await listByNull(order, offset, limit)
       ctx.body = result
     }

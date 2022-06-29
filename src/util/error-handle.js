@@ -53,18 +53,23 @@ const errorHandle = (err, ctx) => {
     break;
 
     case errorType.MOMENT_EXIST: 
-      ctx.status = 400
+      ctx.status = 403
       ctx.body = "该动态不存在"
     break;
 
     case errorType.COMMENT_EXIST: 
-      ctx.status = 400
+      ctx.status = 403
       ctx.body = "该评论不存在"
     break;
 
     case errorType.CAN_NOT_FOLLOW_ABOUT_YOURSELF: 
-      ctx.status = 400
+      ctx.status = 403
       ctx.body = "不能自己关注自己"
+    break;
+
+    case errorType.UPLOAD_ERROR: 
+      ctx.status = 503
+      ctx.body = "上传图片失败"
     break;
       
     default: 

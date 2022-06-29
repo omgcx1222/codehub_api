@@ -14,13 +14,14 @@ const {
   uploadPictures
 } = require('./service')
 const { AVATAR_PATH, PICTURE_PATH } = require('../../util/file-path')
-// const { PARAMS_ERROR } = require('../../util/error-type')
+// const { UPLOAD_ERROR } = require('../../util/error-type')
 const { APP_URL, APP_PORT } = require('../../app/config')
 
 const saveAvatarMulter = multer({ 
   dest: AVATAR_PATH,
   limits: {
-    fileSize: 10240 * 1000,
+    // 10m
+    fileSize: 10 * 1024 * 1024,
     files: 1
   },
   fileFilter: function (req, file, cb) {
@@ -36,7 +37,8 @@ const saveAvatarMulter = multer({
 const savePicturesMulter = multer({ 
   dest: PICTURE_PATH,
   limits: {
-    fileSize: 20480 * 1000,
+    // 20m
+    fileSize: 20 * 1024 * 1024,
     files: 1
   },
   fileFilter: function (req, file, cb) {
@@ -56,6 +58,7 @@ class UploadMiddleware {
       if(name === 'avatar') {
         // 保存头像
         await saveAvatarMulter.single(name)(ctx, next).catch(err =>{
+          ctx.status = 401
           ctx.body = err.message
         })
       }else {
@@ -63,11 +66,13 @@ class UploadMiddleware {
         const list = await getInfo('picture', 'moment_id', momentId)
         
         if(list.length >= 9) {
+          ctx.status = 401
           return ctx.body = "配图不能超过9个！"
         }
 
         // 保存配图
         await savePicturesMulter.single(name)(ctx, next).catch(err =>{
+          ctx.status = 401
           ctx.body = err.message
         })
       }

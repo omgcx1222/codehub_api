@@ -5,24 +5,13 @@ class MomentService {
   // 发表动态
   async insertMoment(id, content) {
     const statement = "INSERT INTO moment (user_id, content) VALUES (?, ?);"
-    const result = await connection.execute(statement, [id, content])
-    
-    return result[0]
+    try {
+      const result = await connection.execute(statement, [id, content])
+      return result[0]
+    } catch (error) {
+      return error
+    }
   }
-
-  // 添加标签
-  // async addLAbel(id, labels) {
-  //   try {
-  //     for(let labelId of labels) {
-  //       const statement2 = "INSERT INTO moment_label (moment_id, label_id) VALUES (?, ?)"
-  //       await connection.execute(statement2, [id, labelId])
-  //     }
-  
-  //     return "添加标签成功"
-  //   } catch (error) {
-  //     return error
-  //   }
-  // }
 
   // 获取动态详情
   async detail(id) {
