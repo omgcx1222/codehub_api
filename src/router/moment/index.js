@@ -14,7 +14,7 @@ const {
 const commentRouter = new Router({prefix: '/moment'})
 
 commentRouter.post('/', verifyTokenVoid, createMoment) // 发表动态
-commentRouter.get('/:momentId', momentDetail) // 动态详情
+commentRouter.get('/:momentId', verifyToken, momentDetail) // 动态详情
 commentRouter.get('/', verifyToken, momentList) // 动态列表
 commentRouter.patch('/:momentId', verifyTokenVoid, verifyPermission("moment"), updateMoment) // 修改动态
 commentRouter.delete('/:momentId', verifyTokenVoid, verifyPermission("moment"), removeMoment) // 删除动态

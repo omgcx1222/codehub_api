@@ -14,19 +14,25 @@ class MomentService {
   }
 
   // 获取动态详情
-  async detail(id) {
+  async detail(id, momentId) {
     const statement = `
       SELECT m.id momentId, m.content content, m.createTime createTime, m.updateTime updateTime,
         IF(COUNT(u.id),JSON_OBJECT('id', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url), null) author,
         (SELECT COUNT(*) FROM moment_agree mg WHERE mg.moment_id = m.id) agree,
-        (SELECT JSON_OBJECT('id', l.id, 'name', l.name) FROM label l WHERE l.id = m.label_id) label,
+        ${id ? '(SELECT COUNT(*) FROM moment_agree mg WHERE mg.moment_id = m.id AND mg.user_id = ?) isAgree,' : ''}
         (SELECT JSON_ARRAYAGG(CONCAT('${APP_URL}:${APP_PORT}', '/moment/picture/', p.filename, '-y')) FROM picture p WHERE p.moment_id = m.id) images
       FROM moment m LEFT JOIN users u ON m.user_id = u.id
       WHERE m.id = ?
       GROUP BY m.id
     `
     try {
-      const [result] = await connection.execute(statement, [id])
+      let result = []
+      if(id) {
+        [result] = await connection.execute(statement, [id, momentId])
+      }else {
+        [result] = await connection.execute(statement, [momentId])
+      }
+
       if(result[0].momentId == null) {
         return "该动态不存在~"
       }

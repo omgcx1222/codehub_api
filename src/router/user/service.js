@@ -32,16 +32,43 @@ class UserService {
     }
   }
 
+  // 关注
   async follow(userId, fansId) {
     const statement = `INSERT INTO users_fans (user_id, fans_id) VALUES (?, ?);`
     const [result] = await connection.execute(statement, [userId, fansId])
     return result
   }
 
+  // 取关
   async unfollow(userId, fansId) {
     const statement = `DELETE FROM users_fans WHERE user_id = ? AND fans_id = ?;`
     const [result] = await connection.execute(statement, [userId, fansId])
     return result
+  }
+
+  // 获取关注个数
+  async followCount(id) {
+    const statement = "SELECT COUNT(*) followCount FROM users_fans WHERE fans_id = ?"
+    const [result] = await connection.execute(statement, [id])
+    
+    return result[0]
+  }
+
+
+  // 获取粉丝个数
+  async fansCount(id) {
+    const statement = "SELECT COUNT(*) fansCount FROM users_fans WHERE user_id = ?"
+    const [result] = await connection.execute(statement, [id])
+    
+    return result[0]
+  }
+
+  // 获取点赞个数
+  async getAgreeCount(id) {
+    const statement = "SELECT count(m.user_id) getAgreeCount FROM moment_agree mg LEFT JOIN moment m ON m.id = mg.moment_id WHERE m.user_id = ?"
+    const [result] = await connection.execute(statement, [id])
+    
+    return result[0]
   }
 
 }

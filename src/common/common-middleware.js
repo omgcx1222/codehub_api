@@ -9,7 +9,7 @@ class CommonMiddleware {
   // 验证token(失败不执行)
   async verifyTokenVoid(ctx, next){
     // 获取请求头中的token
-    const authorization = ctx.request.headers.authorization || ""
+    const authorization = ctx.request?.headers?.authorization ?? ""
     const token = authorization.replace("Bearer ", "")
     // 验证token
     try {
@@ -29,7 +29,7 @@ class CommonMiddleware {
   // 验证token(失败依旧执行next)
   async verifyToken(ctx, next) {
     // 获取请求头中的token
-    const authorization = ctx.request.headers.authorization || ""
+    const authorization = ctx.request?.headers?.authorization ?? ""
     const token = authorization.replace("Bearer ", "")
     // 验证token
     try {
@@ -42,7 +42,6 @@ class CommonMiddleware {
       // const error = new Error(TOKEN_NOT_OK)
       // return ctx.app.emit('error', error, ctx)
     }
-
     await next()
   }
 
@@ -77,8 +76,7 @@ class CommonMiddleware {
 
   // 检查动态和评论是否同时存在
   async verifyMomentAndComment(ctx, next) {
-    const { commentId } = ctx.params
-    const { momentId } = ctx.request.body
+    const { momentId, commentId } = ctx.request.body
     if(!commentId || !momentId) return ctx.app.emit('error', new Error(PARAMS_ERROR), ctx)
 
     const result = await macExist(commentId, momentId)

@@ -16,8 +16,7 @@ class CommentMiddleware {
   // 回复评论
   async replyComment(ctx, next) {
     const { id } = ctx.user
-    const { content, momentId } = ctx.request.body
-    const { commentId } = ctx.params
+    const { content, momentId, commentId } = ctx.request.body
     try {
       await reply(id, content, momentId, commentId)
       ctx.body = "回复成功"

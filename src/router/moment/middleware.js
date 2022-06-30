@@ -26,7 +26,8 @@ class MomentMiddleware {
   // 获取动态详情
   async momentDetail(ctx, next) {
     const { momentId } = ctx.params
-    const result = await detail(momentId)
+    const userId = ctx.user?.id
+    const result = await detail(userId, momentId)
     ctx.body = result
   }
 
