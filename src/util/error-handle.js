@@ -71,6 +71,11 @@ const errorHandle = (err, ctx) => {
       ctx.status = 503
       ctx.body = "上传图片失败"
     break;
+
+    case errorType.UNKNOW_ERROR: 
+      ctx.status = 501
+      ctx.body = "未知错误"
+    break;
       
     default: 
       ctx.status = 404

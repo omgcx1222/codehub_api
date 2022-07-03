@@ -19,6 +19,7 @@ class MomentService {
       SELECT m.id momentId, m.content content, m.createTime createTime, m.updateTime updateTime,
         IF(COUNT(u.id),JSON_OBJECT('id', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url), null) author,
         (SELECT COUNT(*) FROM moment_agree mg WHERE mg.moment_id = m.id) agree,
+        (SELECT COUNT(*) FROM users_fans WHERE user_id = u.id) authorFans,
         ${id ? '(SELECT COUNT(*) FROM moment_agree mg WHERE mg.moment_id = m.id AND mg.user_id = ?) isAgree,' : ''}
         (SELECT JSON_ARRAYAGG(CONCAT('${APP_URL}:${APP_PORT}', '/moment/picture/', p.filename, '-y')) FROM picture p WHERE p.moment_id = m.id) images
       FROM moment m LEFT JOIN users u ON m.user_id = u.id
@@ -42,7 +43,7 @@ class MomentService {
     }
   }
 
-  // 已登录获取动态列表
+  // 获取动态列表
   async listByUserId(id, order, offset, limit) {
     const statement = `
       SELECT m.id momentId, m.content content, m.createTime createTime, m.updateTime updateTime,
@@ -51,7 +52,7 @@ class MomentService {
         (SELECT COUNT(*) FROM comment c WHERE m.id = c.moment_id) commentCount,
         (SELECT COUNT(*) FROM moment_agree mg WHERE mg.moment_id = m.id) agree,
         (SELECT COUNT(*) FROM moment_agree mg WHERE mg.moment_id = m.id AND mg.user_id = ?) isAgree,
-        (SELECT COUNT(*) FROM users_fans uf WHERE uf.user_id = u.id AND uf.fans_id = ?) isAuthorFans
+        (SELECT COUNT(*) FROM users_fans WHERE user_id = u.id) authorFans
       FROM moment m LEFT JOIN users u ON m.user_id = u.id
       ${order == 2 ? 'RIGHT JOIN users_fans uf ON uf.user_id = m.user_id WHERE uf.fans_id = ?' : ''}
       ORDER BY ${order == 1 ? 'agree DESC,' : ''} m.createTime DESC
@@ -60,13 +61,13 @@ class MomentService {
     try {
       let result
       if(order == 2) {
-        result = await connection.execute(statement, [id, id, id, offset, limit])
-      }else {
         result = await connection.execute(statement, [id, id, offset, limit])
+      }else {
+        result = await connection.execute(statement, [id, offset, limit])
       }
       return result[0]
     } catch (error) {
-      return error
+      return error.message
     }
   }
 
@@ -77,6 +78,7 @@ class MomentService {
         JSON_OBJECT('id', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url) author,
         (SELECT JSON_ARRAYAGG(CONCAT('${APP_URL}:${APP_PORT}', '/moment/picture/', p.filename, '-y')) FROM picture p WHERE p.moment_id = m.id) images,
         (SELECT COUNT(*) FROM comment c WHERE m.id = c.moment_id) commentCount,
+        (SELECT COUNT(*) FROM users_fans WHERE user_id = u.id) authorFans,
         (SELECT COUNT(*) FROM moment_agree mg WHERE mg.moment_id = m.id) agree
       FROM moment m LEFT JOIN users u ON m.user_id = u.id
       ORDER BY ${order == 1 ? 'agree DESC,' : ''} m.createTime DESC

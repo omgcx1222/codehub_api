@@ -12,6 +12,7 @@ const MOMENT_EXIST = 'moment_exist'
 const COMMENT_EXIST = 'comment_exist'
 const CAN_NOT_FOLLOW_ABOUT_YOURSELF = "Can not Follow about yourself"
 const UPLOAD_ERROR = "upload error"
+const UNKNOW_ERROR = "unknow error"
 
 module.exports = {
   USERNAME_PASSWORD_IS_NULL,
@@ -27,5 +28,6 @@ module.exports = {
   MOMENT_EXIST,
   COMMENT_EXIST,
   CAN_NOT_FOLLOW_ABOUT_YOURSELF,
-  UPLOAD_ERROR
+  UPLOAD_ERROR,
+  UNKNOW_ERROR
 }
