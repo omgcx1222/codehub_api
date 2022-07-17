@@ -32,7 +32,7 @@ class SocketMiddleware {
     
       // 接收
       ctx.websocket.on('message', async (data) =>{
-        const { userInfo, message } = JSON.parse(data)
+        const { userInfo = {}, message="" } = JSON.parse(data)
         currentUser = userInfo
         try {
           const result = jwt.verify(userInfo.token, PUBLIC_KEY, {

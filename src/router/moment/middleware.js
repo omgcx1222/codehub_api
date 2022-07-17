@@ -43,8 +43,12 @@ class MomentMiddleware {
     }
     // 未登录
     else {
-      const result = await listByNull(order, offset, limit)
-      ctx.body = result
+      if(order == 0 || order == 1) {
+        const result = await listByNull(order, offset, limit)
+        ctx.body = result
+        return
+      }
+      ctx.body = []
     }
     
   }
