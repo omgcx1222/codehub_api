@@ -22,10 +22,10 @@ class UserService {
   }
 
   // 判断是否已经存在关注关系
-  async fansExist(userId, fansId) {
+  async fansExist(followId, id) {
     const statement = "SELECT * FROM users_fans WHERE user_id = ? AND fans_id = ?"
     try {
-      const [result] = await connection.execute(statement, [userId, fansId])
+      const [result] = await connection.execute(statement, [followId, id])
       return result
     } catch (error) {
       ctx.body = error
@@ -33,16 +33,16 @@ class UserService {
   }
 
   // 关注
-  async follow(userId, fansId) {
+  async follow(followId, id) {
     const statement = `INSERT INTO users_fans (user_id, fans_id) VALUES (?, ?);`
-    const [result] = await connection.execute(statement, [userId, fansId])
+    const [result] = await connection.execute(statement, [followId, id])
     return result
   }
 
   // 取关
-  async unfollow(userId, fansId) {
+  async unfollow(followId, id) {
     const statement = `DELETE FROM users_fans WHERE user_id = ? AND fans_id = ?;`
-    const [result] = await connection.execute(statement, [userId, fansId])
+    const [result] = await connection.execute(statement, [followId, id])
     return result
   }
 

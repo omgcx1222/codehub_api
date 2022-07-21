@@ -71,12 +71,12 @@ class UserMiddleware {
     if(id == followId) return ctx.app.emit('error', new Error(errorType.CAN_NOT_FOLLOW_ABOUT_YOURSELF), ctx)
 
     // 判断是否已关注
-    const result = await service.fansExist(id, followId)
+    const result = await service.fansExist(followId, id)
     if(result.length) {
-      await service.unfollow(id, followId)
+      await service.unfollow(followId, id)
       ctx.body = "取消关注"
     }else {
-      await service.follow(id, followId)
+      await service.follow(followId, id)
       ctx.body = "关注成功"
     }
   }
