@@ -2,32 +2,41 @@ const jwt = require("jsonwebtoken")
 
 const { PUBLIC_KEY } = require("../../app/config")
 const { createChatRecord, selectChatRecord } = require("./serviec")
+const createUid = require("../../util/createUid")
 
-// 存储所有在线用户的ctx
-let list = []
+// 验证身份
+function verify(userInfo) {
+  if (!userInfo.token) {
+    // 任意一个为空，说明用户上传的userInfo有问题，返回新的info
+    if (!userInfo.id || !userInfo.nickname || !userInfo.type) {
+      return {
+        id: createUid(),
+        nickname: "游客_" + Date.now(),
+        type: "tourist"
+      }
+    }
+    return userInfo
+  }
 
-// 鉴权
-function verify(token) {
-  let result = {}
   try {
-    result = jwt.verify(token, PUBLIC_KEY, {
+    const result = jwt.verify(userInfo.token, PUBLIC_KEY, {
       algorithms: ["RS256"]
     })
+    return result
   } catch (err) {
-    const id = String.fromCharCode(Math.random() * 26 + "a".charCodeAt()) + "_" + Date.now()
-    result = {
-      id,
-      nickname: "游客" + id
+    return {
+      id: createUid(),
+      nickname: "游客_" + Date.now(),
+      type: "tourist"
     }
   }
-  return result
 }
 
 // 给所有人发送
 function allSend(data) {
-  for (let user of list) {
-    user.ctx.websocket.send(JSON.stringify(data))
-  }
+  onLineUsers.forEach((user) => {
+    user?.ctx?.websocket?.send(JSON.stringify(data))
+  })
 }
 
 // 指定给某人发送
@@ -35,51 +44,37 @@ function assignSend(ctx, data) {
   ctx.websocket.send(JSON.stringify(data))
 }
 
+// 存储所有在线用户的ctx
+const onLineUsers = new Map()
+
 class SocketMiddleware {
   async connectSocket(ctx, next) {
-    let currentUser
+    const uid = createUid()
+    onLineUsers.set(uid)
+    let currentUser = {}
+
     // 接收
     ctx.websocket.on("message", async (msg) => {
       const { type = "", data = {} } = JSON.parse(msg)
-      const token = data?.token
-      currentUser = verify(token)
+      const { userInfo = {} } = data
+      currentUser = verify(userInfo)
+      onLineUsers.set(uid, { ctx, userInfo: currentUser })
 
       switch (type) {
         case "login":
-          // 登录用户(游客没有token的exp)
-          if (currentUser.exp) {
-            const exist = list.find((item) => item.userInfo.id == currentUser.id)
-            if (!exist) {
-              list.push({ ctx, userInfo: currentUser })
-              // const result = await selectChatRecord()
-              // assignSend(ctx, list.length, result)
-              allSend({ type: "online", data: { onLineCount: list.length, onLineUser: currentUser } })
-            }
-          }
-          // 游客
-          else {
-            list.push({ ctx, userInfo: currentUser })
-            allSend({ type: "online", data: { onLineCount: list.length, onLineUser: currentUser } })
-          }
+          allSend({ type: "online", data: { onLineCount: onLineUsers.size, onLineUser: currentUser } })
           break
         case "chatMessage":
           const { message = "" } = data
           // 登录用户
-          if (currentUser.exp) {
-            if (!message) {
-              assignSend(ctx, { type: "messageNull" })
-            } else {
+          if (!currentUser.type) {
+            // 内容不能为空
+            if (message) {
               const result = await createChatRecord(currentUser.id, message)
               const result2 = await selectChatRecord(result.insertId)
-              allSend({ type: "userMessage", data: { onLineCount: list.length, chatRecord: result2[0] } })
+              allSend({ type: "userMessage", data: { onLineCount: onLineUsers.size, chatRecord: result2[0] } })
             }
-          } else {
-            // 未登录
-            assignSend(ctx, { type: "notLogin" })
           }
-        // case "dropLine":
-
-        //   break
         default:
           break
       }
@@ -87,12 +82,8 @@ class SocketMiddleware {
 
     // 关闭
     ctx.websocket.on("close", async (state) => {
-      if (!currentUser?.id) return
-      const index = list.findIndex((item) => item.userInfo.id == currentUser.id)
-      if (index >= 0) {
-        list.splice(index, 1)
-        allSend({ type: "dropLine", data: { onLineCount: list.length } })
-      }
+      onLineUsers.delete(uid)
+      allSend({ type: "dropLine", data: { onLineCount: onLineUsers.size } })
     })
   }
 }
