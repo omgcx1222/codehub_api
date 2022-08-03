@@ -12,7 +12,8 @@ function verify(userInfo) {
       return {
         id: createUid(),
         nickname: "游客_" + Date.now(),
-        type: "tourist"
+        type: "tourist",
+        time: new Date()
       }
     }
     return userInfo
@@ -22,12 +23,16 @@ function verify(userInfo) {
     const result = jwt.verify(userInfo.token, PUBLIC_KEY, {
       algorithms: ["RS256"]
     })
-    return result
+    return {
+      ...result,
+      time: new Date()
+    }
   } catch (err) {
     return {
       id: createUid(),
       nickname: "游客_" + Date.now(),
-      type: "tourist"
+      type: "tourist",
+      time: new Date()
     }
   }
 }
@@ -51,15 +56,18 @@ function assignSend(ctx, data) {
 
 // 获取用户信息
 function getOnLineInfo() {
-  let c1 = 0 // 游客在线人数
-  let c2 = 0 // 登录用户在线个数
+  // let c1 = 0 // 游客在线人数
+  // let c2 = 0 // 登录用户在线个数
+  let c1 = []
+  let c2 = []
   Object.keys(onLineUsers).forEach((item) => {
-    onLineUsers[item]?.userInfo?.type ? c1++ : c2++
+    const u = onLineUsers[item]?.userInfo
+    u?.type ? c1.push(u) : c2.push(u)
   })
 
   return {
-    touristCount: c1,
-    loginCount: c2
+    tourist: c1,
+    onLineUsers: c2
   }
 }
 
@@ -93,6 +101,7 @@ class SocketMiddleware {
       switch (type) {
         case "login":
           let chatRooms = []
+          // 登录用户
           if (!currentUser.type) {
             chatRooms = await selectChatRecord(currentUser.id)
             currentUser.chatRoomIds = chatRooms.map((item) => item.id)
@@ -102,7 +111,7 @@ class SocketMiddleware {
             chatRooms = await selectChatRecord()
           }
           assignSend(ctx, { type: "chatRecord", data: { chatRooms } })
-          allSend({ type: "onLine", data: { onLineCount: getOnLineInfo(), onLineUser: currentUser } })
+          allSend({ type: "onLine", data: { onLineUsers: getOnLineInfo(), onLineUser: currentUser } })
           break
         case "sendPublicChat":
           if (!currentUser.type) {
@@ -123,7 +132,6 @@ class SocketMiddleware {
                   })
                 }
               })
-              // allSend({ type: "sendChat", data: { chatMessage: result2[0] } })
             }
           }
           break
@@ -161,7 +169,7 @@ class SocketMiddleware {
     // 关闭
     ctx.websocket.on("close", async (state) => {
       delete onLineUsers[uid]
-      allSend({ type: "dropLine", data: { onLineCount: getOnLineInfo() } })
+      allSend({ type: "offLine", data: { onLineUsers: getOnLineInfo() } })
     })
   }
 }

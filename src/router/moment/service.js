@@ -1,5 +1,5 @@
-const connection = require('../../app/database')
-const { APP_URL, APP_PORT } = require('../../app/config')
+const connection = require("../../app/database")
+const { APP_URL, APP_PORT } = require("../../app/config")
 
 class MomentService {
   // 发表动态
@@ -19,8 +19,9 @@ class MomentService {
       SELECT m.id momentId, m.content content, m.createTime createTime, m.updateTime updateTime,
         IF(COUNT(u.id),JSON_OBJECT('id', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url), null) author,
         (SELECT COUNT(*) FROM moment_agree mg WHERE mg.moment_id = m.id) agree,
-        (SELECT COUNT(*) FROM users_fans WHERE user_id = u.id) authorFans,
-        ${id ? '(SELECT COUNT(*) FROM moment_agree mg WHERE mg.moment_id = m.id AND mg.user_id = ?) isAgree,' : ''}
+        (SELECT COUNT(*) FROM users_fans WHERE user_id = u.id) fansCount,
+        (SELECT COUNT(*) FROM users_fans uf WHERE uf.user_id = u.id AND uf.fans_id = 83) isAuthorFans,
+        ${id ? "(SELECT COUNT(*) FROM moment_agree mg WHERE mg.moment_id = m.id AND mg.user_id = ?) isAgree," : ""}
         (SELECT JSON_ARRAYAGG(CONCAT('${APP_URL}:${APP_PORT}', '/moment/picture/', p.filename, '-y')) FROM picture p WHERE p.moment_id = m.id) images
       FROM moment m LEFT JOIN users u ON m.user_id = u.id
       WHERE m.id = ?
@@ -28,13 +29,13 @@ class MomentService {
     `
     try {
       let result = []
-      if(id) {
-        [result] = await connection.execute(statement, [id, momentId])
-      }else {
-        [result] = await connection.execute(statement, [momentId])
+      if (id) {
+        ;[result] = await connection.execute(statement, [id, momentId])
+      } else {
+        ;[result] = await connection.execute(statement, [momentId])
       }
 
-      if(result[0].momentId == null) {
+      if (result[0].momentId == null) {
         return "该动态不存在~"
       }
       return result[0]
@@ -52,17 +53,18 @@ class MomentService {
         (SELECT COUNT(*) FROM comment c WHERE m.id = c.moment_id) commentCount,
         (SELECT COUNT(*) FROM moment_agree mg WHERE mg.moment_id = m.id) agree,
         (SELECT COUNT(*) FROM moment_agree mg WHERE mg.moment_id = m.id AND mg.user_id = ?) isAgree,
-        (SELECT COUNT(*) FROM users_fans WHERE user_id = u.id) authorFans
+        (SELECT COUNT(*) FROM users_fans WHERE user_id = u.id) fansCount,
+        (SELECT COUNT(*) FROM users_fans uf WHERE uf.user_id = u.id AND uf.fans_id = 83) isAuthorFans
       FROM moment m LEFT JOIN users u ON m.user_id = u.id
-      ${order == 2 ? 'RIGHT JOIN users_fans uf ON uf.user_id = m.user_id WHERE uf.fans_id = ?' : ''}
-      ORDER BY ${order == 1 ? 'agree DESC,' : ''} m.createTime DESC
+      ${order == 2 ? "RIGHT JOIN users_fans uf ON uf.user_id = m.user_id WHERE uf.fans_id = ?" : ""}
+      ORDER BY ${order == 1 ? "agree DESC," : ""} m.createTime DESC
       LIMIT ?, ?
     `
     try {
       let result
-      if(order == 2) {
+      if (order == 2) {
         result = await connection.execute(statement, [id, id, offset, limit])
-      }else {
+      } else {
         result = await connection.execute(statement, [id, offset, limit])
       }
       return result[0]
@@ -78,10 +80,10 @@ class MomentService {
         JSON_OBJECT('id', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url) author,
         (SELECT JSON_ARRAYAGG(CONCAT('${APP_URL}:${APP_PORT}', '/moment/picture/', p.filename, '-y')) FROM picture p WHERE p.moment_id = m.id) images,
         (SELECT COUNT(*) FROM comment c WHERE m.id = c.moment_id) commentCount,
-        (SELECT COUNT(*) FROM users_fans WHERE user_id = u.id) authorFans,
+        (SELECT COUNT(*) FROM users_fans WHERE user_id = u.id) fansCount,
         (SELECT COUNT(*) FROM moment_agree mg WHERE mg.moment_id = m.id) agree
       FROM moment m LEFT JOIN users u ON m.user_id = u.id
-      ORDER BY ${order == 1 ? 'agree DESC,' : ''} m.createTime DESC
+      ORDER BY ${order == 1 ? "agree DESC," : ""} m.createTime DESC
       LIMIT ?, ?
     `
     try {
@@ -108,7 +110,6 @@ class MomentService {
     } catch (error) {
       context.body = error
     }
-    
   }
 
   // 修改动态内容

@@ -1,13 +1,24 @@
-const connection = require('../../app/database')
-const { APP_URL, APP_PORT } = require('../../app/config')
+const connection = require("../../app/database")
+const { APP_URL, APP_PORT } = require("../../app/config")
 
 class UserService {
   // 注册
   async create(user) {
     const { username, password, nickname } = user
-    const statement = 'INSERT INTO users (username, password, nickname) VALUES (?, ?, ?)'
+    const statement = "INSERT INTO users (username, password, nickname) VALUES (?, ?, ?)"
     try {
       const [result] = await connection.execute(statement, [username, password, nickname])
+      return result
+    } catch (error) {
+      ctx.body = error
+    }
+  }
+
+  // 加入默认聊天室
+  async joinChat(id) {
+    const statement = "INSERT INTO chats_users (chat_id, user_id) VALUES (?, ?)"
+    try {
+      const [result] = await connection.execute(statement, [1, id])
       return result
     } catch (error) {
       ctx.body = error
@@ -50,27 +61,26 @@ class UserService {
   async followCount(id) {
     const statement = "SELECT COUNT(*) followCount FROM users_fans WHERE fans_id = ?"
     const [result] = await connection.execute(statement, [id])
-    
+
     return result[0]
   }
-
 
   // 获取粉丝个数
   async fansCount(id) {
     const statement = "SELECT COUNT(*) fansCount FROM users_fans WHERE user_id = ?"
     const [result] = await connection.execute(statement, [id])
-    
+
     return result[0]
   }
 
   // 获取点赞个数
   async getAgreeCount(id) {
-    const statement = "SELECT count(m.user_id) getAgreeCount FROM moment_agree mg LEFT JOIN moment m ON m.id = mg.moment_id WHERE m.user_id = ?"
+    const statement =
+      "SELECT count(m.user_id) getAgreeCount FROM moment_agree mg LEFT JOIN moment m ON m.id = mg.moment_id WHERE m.user_id = ?"
     const [result] = await connection.execute(statement, [id])
-    
+
     return result[0]
   }
-
 }
 
 module.exports = new UserService()

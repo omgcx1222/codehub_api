@@ -12,27 +12,31 @@ class SocketService {
     }
   }
 
-  // 查询记录
+  // 查询聊天记录
   async selectChatRecord(id) {
     try {
       // 登录用户
       if (id) {
         const statement = `
-          SELECT cu.chat_id id, c.name,
-            JSON_ARRAYAGG(JSON_OBJECT('id', cl.id, 'message', cl.message, 'userId', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url)) chats
-          FROM chats_users cu
-          RIGHT JOIN chats_list cl ON cl.chat_id = cu.chat_id
-          LEFT JOIN chats c ON c.id = cu.chat_id
-          LEFT JOIN users u ON u.id = cu.user_id 
+          SELECT cl.chat_id id, c.name,
+            JSON_ARRAYAGG(
+              JSON_OBJECT('id', cl.id, 'message', cl.message, 'userId', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url, 'createTime', cl.createTime)
+            ) chats
+          FROM chats_list cl
+          LEFT JOIN chats c ON c.id = cl.chat_id
+          LEFT JOIN users u ON u.id = cl.user_id
+          LEFT JOIN chats_users cu on cu.chat_id = cl.chat_id
           WHERE cu.user_id = ?
-          GROUP BY cu.chat_id
+          GROUP BY cl.chat_id
         `
         const [result] = await connection.execute(statement, [id])
         return result
       } else {
         const statement = `
           SELECT cl.chat_id id, c.name,
-            JSON_ARRAYAGG(JSON_OBJECT('id', cl.id, 'message', cl.message, 'userId', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url)) chats
+            JSON_ARRAYAGG(
+              JSON_OBJECT('id', cl.id, 'message', cl.message, 'userId', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url, 'createTime', cl.createTime)
+            ) chats
           FROM chats_list cl
           LEFT JOIN chats c ON c.id = cl.chat_id
           LEFT JOIN users u ON u.id = cl.user_id
