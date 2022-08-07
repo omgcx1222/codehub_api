@@ -1,21 +1,22 @@
-const { pub, reply, remove, commentList, commentAllReply  } = require('./service')
-const { UNKNOW_ERROR } = require('../../util/error-type')
-const { agreeExist, agree, deleteAgree } = require('../../common/common-service')
+const { pub, reply, remove, commentList, commentAllReply } = require("./service")
+const { PARAMS_ERROR } = require("../../util/error-type")
+const { agreeExist, agree, deleteAgree } = require("../../common/common-service")
 
 class CommentMiddleware {
   // 发表评论
   async pubComment(ctx, next) {
     const { id } = ctx.user
     const { content, momentId, commentId, replyId } = ctx.request.body
-    // if(!content || !momentId) return ctx.app.emit('error', new Error(PARAMS_ERROR), ctx)
-    
+    if (!content) return ctx.app.emit("error", new Error(PARAMS_ERROR), ctx)
+
     const cId = await pub(id, content, momentId, commentId, replyId)
-    if(commentId || replyId) {
+    // 保存查询条件
+    if (commentId || replyId) {
       ctx.query = { commentId, oneId: cId }
-    }else {
+    } else {
       ctx.query = { momentId, oneId: cId }
     }
-    await next()
+    await next() // 继续继续next 返回当前发表的评论的信息
     // this.getCommentList(ctx, next)
   }
 
@@ -45,7 +46,7 @@ class CommentMiddleware {
   //   if(momentId) {  // 根据动态获取一级评论
   //     let { order='0', offset='0', limit='10', userId='' } = ctx.query
   //     switch(order) {
-  //       case '1': 
+  //       case '1':
   //         order = 'agree'
   //         break;
   //       default:
@@ -65,8 +66,7 @@ class CommentMiddleware {
   //     const result = await listInUser(id, offset, limit)
   //     ctx.body = result
   //   }
-    
-    
+
   //   // else if(userId){  // 根据用户id获取
   //   //   const { offset='0', limit='10' } = ctx.query
   //   //   // if(!userId) return ctx.app.emit('error', new Error(PARAMS_ERROR), ctx)
@@ -74,22 +74,23 @@ class CommentMiddleware {
   //   //   const result = await listInUser(userId, offset, limit)
   //   //   ctx.body = result
   //   // }else {
-      
+
   //   //   const result = await listInComment(id, commentId)
   //   //   ctx.body = result
   //   // }
   // }
 
-
   // 获取动态的评论和回复列表
   async getCommentList(ctx, next) {
     const userId = ctx.user?.id
     // oncId用于 用户发表评论(必有userId) 后获取该评论信息
-    const { momentId, commentId, order='0', offset='0', limit='10', oneId='' } = ctx.query
-    if(momentId) {
+    const { momentId, commentId, order = "0", offset = "0", limit = "10", oneId = "" } = ctx.query
+    if (momentId) {
+      // 获取评论的三条热门回复
       const result = await commentList(userId, momentId, order, offset, limit, oneId)
       ctx.body = result
-    }else {
+    } else {
+      // 获取评论的所有回复
       const result = await commentAllReply(userId, commentId, offset, limit, oneId)
       ctx.body = result
     }
@@ -109,10 +110,10 @@ class CommentMiddleware {
     const { commentId } = ctx.params
     try {
       const result = await agreeExist(id, commentId, "comment")
-      if(!result.length) {
+      if (!result.length) {
         await agree(id, commentId, "comment")
         ctx.body = "点赞成功"
-      }else {
+      } else {
         await deleteAgree(id, commentId, "comment")
         ctx.body = "取消点赞"
       }

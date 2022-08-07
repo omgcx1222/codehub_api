@@ -3,7 +3,7 @@ const connection = require("../../app/database")
 class SocketService {
   // 创建记录
   async createChatRecord(id, chatId, message) {
-    const statement = "INSERT INTO chat_list (user_id, chat_id, message) VALUES (?, ?, ?)"
+    const statement = "INSERT INTO chats_list (user_id, chat_id, message) VALUES (?, ?, ?)"
     try {
       const [result] = await connection.execute(statement, [id, chatId, message])
       return result

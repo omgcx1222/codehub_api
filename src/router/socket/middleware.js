@@ -67,7 +67,7 @@ function getOnLineInfo() {
 
   return {
     tourist: c1,
-    onLineUsers: c2
+    onLine: c2
   }
 }
 
@@ -100,6 +100,7 @@ class SocketMiddleware {
 
       switch (type) {
         case "login":
+          // 所有聊天室的聊天记录
           let chatRooms = []
           // 登录用户
           if (!currentUser.type) {

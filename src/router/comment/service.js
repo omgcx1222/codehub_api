@@ -1,12 +1,12 @@
-const connection = require('../../app/database')
+const connection = require("../../app/database")
 
-// 给有二级回复的评论添加一个点赞最多的回复或第一个回复
-async function addReply (comments) {
+// 给有二级回复的评论添加3个点赞最多的回复或前3个回复
+async function addReply(comments) {
   let newC = comments
-  if(newC.length) {
-    for(const i in newC) {
+  if (newC.length) {
+    for (const i in newC) {
       newC[i].replyChild = []
-      if(newC[i].childCount) {
+      if (newC[i].childCount) {
         const statement = `
           SELECT c.id, c.content, c.createTime, c.moment_id momentId, c.comment_id commentId,
             JSON_OBJECT('id', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url) author,
@@ -28,10 +28,10 @@ async function addReply (comments) {
 // 给三级回复添加回复的作者信息
 async function addReplyAuthor(replyList) {
   let newR = replyList
-  if(newR.length) {
-    for(const i in newR) {
+  if (newR.length) {
+    for (const i in newR) {
       newR[i].replyAuthor = null
-      if(newR[i].replyUserId) {
+      if (newR[i].replyUserId) {
         const statement = "SELECT users.id, users.nickname, users.avatar_url avatarUrl FROM users WHERE users.id = ?"
         const [author] = await connection.execute(statement, [newR[i].replyUserId])
         newR[i].replyAuthor = author[0]
@@ -48,7 +48,8 @@ class CommentService {
     const statement2 = "INSERT INTO comment (user_id, content, moment_id, comment_id) VALUES (?, ?, ?, ?)"
     const statement3 = "INSERT INTO comment (user_id, content, moment_id, comment_id, reply_id) VALUES (?, ?, ?, ?, ?)"
 
-    if(replyId) {
+    if (replyId) {
+      // 建表时建立了外键约束 replyId存在时，momentId和commentId必须存在，否则会抛出异常
       try {
         // 回复评论的回复
         const [res] = await connection.execute(statement3, [id, content, momentId, commentId, replyId])
@@ -56,7 +57,8 @@ class CommentService {
       } catch (error) {
         return error.message
       }
-    }else if(commentId) {
+    } else if (commentId) {
+      // 建表时建立了外键约束 commentId存在时，momentId必须存在，否则会抛出异常
       try {
         // 回复评论
         const [res] = await connection.execute(statement2, [id, content, momentId, commentId])
@@ -64,7 +66,7 @@ class CommentService {
       } catch (error) {
         return error.message
       }
-    }else {
+    } else {
       try {
         // 评论动态
         const [res] = await connection.execute(statement1, [id, content, momentId])
@@ -121,24 +123,26 @@ class CommentService {
       SELECT c.id, c.content, c.createTime, c.moment_id momentId, c.comment_id commentId,
         JSON_OBJECT('id', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url) author,
         (SELECT COUNT(*) FROM comment_agree cg WHERE cg.comment_id = c.id) agree,
-        ${userId ? '(SELECT COUNT(*) FROM comment_agree cg WHERE cg.comment_id = c.id AND cg.user_id = ?) isAgree,' : ''}
+        ${
+          userId ? "(SELECT COUNT(*) FROM comment_agree cg WHERE cg.comment_id = c.id AND cg.user_id = ?) isAgree," : ""
+        }
         (SELECT COUNT(*) FROM comment c2 WHERE c2.comment_id = c.id) childCount,
         (SELECT COUNT(*) FROM users_fans WHERE user_id = u.id) authorFans
       FROM comment c LEFT JOIN users u ON c.user_id = u.id
-      WHERE c.moment_id = ? ${oneId ? 'AND c.id = ?' : 'AND c.comment_id IS NULL'}
-      ORDER BY ${order == 0 ? 'c.createTime' : 'agree'} DESC
+      WHERE c.moment_id = ? ${oneId ? "AND c.id = ?" : "AND c.comment_id IS NULL"}
+      ORDER BY ${order == 0 ? "c.createTime" : "agree"} DESC
       LIMIT ?, ?
     `
     try {
-      if(userId) {
+      if (userId) {
         // oneId 用于 用户发表评论(必有userId) 后获取该评论信息
-        if(oneId) {
+        if (oneId) {
           const [comments] = await connection.execute(statement, [userId, momentId, oneId, offset, limit])
           return addReply(comments)
         }
         const [comments] = await connection.execute(statement, [userId, momentId, offset, limit])
         return addReply(comments)
-      }else {
+      } else {
         const [comments] = await connection.execute(statement, [momentId, offset, limit])
         return addReply(comments)
       }
@@ -153,23 +157,26 @@ class CommentService {
       SELECT c.id, c.content, c.createTime, c.moment_id momentId, c.comment_id commentId,
         JSON_OBJECT('id', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url) author,
         (SELECT c2.user_id FROM comment c2 WHERE c2.id = c.reply_id) replyUserId,
-        ${userId ? '(SELECT COUNT(*) FROM comment_agree cg WHERE cg.comment_id = c.id AND cg.user_id = ?) isAgree,' : ''}
+        ${
+          userId ? "(SELECT COUNT(*) FROM comment_agree cg WHERE cg.comment_id = c.id AND cg.user_id = ?) isAgree," : ""
+        }
         (SELECT COUNT(*) FROM comment_agree cg WHERE cg.comment_id = c.id) agree
       FROM comment c LEFT JOIN users u ON c.user_id = u.id
-      WHERE c.comment_id = ? ${oneId ? 'AND c.id = ?' : ''}
+      WHERE c.comment_id = ? ${oneId ? "AND c.id = ?" : ""}
       ORDER BY c.createTime DESC
       LIMIT ?, ?
     `
     try {
-      if(userId) {
-        // oneId 用于 用户发表回复(必有userId) 后获取该评论信息
-        if(oneId) {
+      if (userId) {
+        // oneId 用于 用户发表回复(必有userId)后 查询该评论信息
+        if (oneId) {
           const [result] = await connection.execute(statement, [userId, commentId, oneId, offset, limit])
           return addReplyAuthor(result)
         }
+
         const [result] = await connection.execute(statement, [userId, commentId, offset, limit])
         return addReplyAuthor(result)
-      }else{
+      } else {
         const [result] = await connection.execute(statement, [commentId, offset, limit])
         return addReplyAuthor(result)
       }
