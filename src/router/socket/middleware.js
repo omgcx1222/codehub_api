@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken")
 
 const { PUBLIC_KEY } = require("../../app/config")
-const { createChatRecord, selectChatRecord, createChatRoom, roomAddUser } = require("./serviec")
+const { createChatRecord, selectChatRecord, createChatRoom, roomAddUser, selectRoomImg } = require("./serviec")
 const createUid = require("../../util/createUid")
 
 // 验证身份
@@ -105,6 +105,13 @@ class SocketMiddleware {
           // 登录用户
           if (!currentUser.type) {
             chatRooms = await selectChatRecord(currentUser.id)
+            chatRooms.forEach(item => {
+              if(item.name === "私聊") {
+                const r = await selectRoomImg(item.id, currentUser.id)
+                item.name = r.nickname
+                item.avatarUrl = r.avatarUrl
+              }
+            })
             currentUser.chatRoomIds = chatRooms.map((item) => item.id)
             // onLineUsers保存着currentUser的地址，所以这一步可以注释掉
             // onLineUsers[uid].userInfo = currentUser
@@ -126,9 +133,15 @@ class SocketMiddleware {
                 if (u) {
                   const { id, nickname, avatarUrl = null } = currentUser
                   assignSend(onLineUsers[uid].ctx, {
-                    type: "sendChat",
+                    type: "publicChat",
                     data: {
-                      chatMessage: { id: result.insertId, message, userId: id, nickname, avatarUrl: avatarUrl }
+                      id: result.insertId,
+                      message,
+                      userId: id,
+                      nickname,
+                      avatarUrl: avatarUrl,
+                      roomId: chatId,
+                      createTime: new Date()
                     }
                   })
                 }
@@ -155,8 +168,13 @@ class SocketMiddleware {
                 if (u) {
                   const { id, nickname, avatarUrl } = currentUser
                   assignSend(onLineUsers[user].ctx, {
-                    type: "sendChat",
-                    data: { chatMessage: { id: result.insertId, message, userId: id, nickname, avatarUrl } }
+                    type: "privateChat",
+                    // data: { id: result.insertId, message, userId: id, nickname, avatarUrl }
+                    data: {
+                      id: room.insertId,
+                      name: "私聊",
+                      chats: [{ id: result.insertId, message, userId: id, nickname, avatarUrl, createTime: new Date() }]
+                    }
                   })
                 }
               })

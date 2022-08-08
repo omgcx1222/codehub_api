@@ -72,6 +72,18 @@ class SocketService {
       return error.message
     }
   }
+
+  // 查询私聊的（对方）头像
+  async selectRoomImg(roomId, userId) {
+    const statement =
+      "SELECT nickname, avatar_url avatarUrl FROM chats_users RIGHT JOIN users ON users.id = user_id WHERE chat_id = ? AND user_id != ?"
+    try {
+      const [result] = await connection.execute(statement, [roomId, userId])
+      return result
+    } catch (error) {
+      return error.message
+    }
+  }
 }
 
 module.exports = new SocketService()
