@@ -105,8 +105,8 @@ class SocketMiddleware {
           // 登录用户
           if (!currentUser.type) {
             chatRooms = await selectChatRecord(currentUser.id)
-            chatRooms.forEach(item => {
-              if(item.name === "私聊") {
+            chatRooms.forEach(async (item) => {
+              if (item.name === "私聊") {
                 const r = await selectRoomImg(item.id, currentUser.id)
                 item.name = r.nickname
                 item.avatarUrl = r.avatarUrl
