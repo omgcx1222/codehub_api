@@ -12,6 +12,40 @@ class SocketService {
     }
   }
 
+  // 查询用户所在的全部聊天室
+  async selectRoomIds(id) {
+    const statement =
+      "SELECT cu.chat_id id, c.name FROM chats_users cu LEFT JOIN chats c ON c.id = cu.chat_id WHERE user_id = ?"
+    try {
+      const [result] = await connection.execute(statement, [id])
+      return result
+    } catch (error) {
+      return error.message
+    }
+  }
+
+  // 根据聊天室id查询聊天记录
+  async selectRoomChat(id, offset = 0, limit = 1) {
+    offset = String(offset)
+    limit = String(limit)
+    const statement = `
+      SELECT cl.id, cl.message, cl.createTime, 
+        JSON_OBJECT('userId', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url) author
+      FROM chats_list cl
+      LEFT JOIN users u ON u.id = cl.user_id
+      WHERE chat_id = ?
+      ORDER BY cl.createTime ${limit == 1 ? "DESC" : ""}
+      LIMIT ?, ?
+    `
+    try {
+      const [result] = await connection.execute(statement, [id, offset, limit])
+      return result
+    } catch (error) {
+      console.log(error.message)
+      return error.message
+    }
+  }
+
   // 查询聊天记录
   async selectChatRecord(id) {
     try {
