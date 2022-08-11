@@ -1,9 +1,9 @@
-const fs = require('fs')
-const path = require('path')
+const fs = require("fs")
+const path = require("path")
 
-const jimp = require('jimp')  // 图片压缩
+const jimp = require("jimp") // 图片压缩
 
-const multer = require('koa-multer')
+const multer = require("koa-multer")
 
 const {
   getInfo,
@@ -12,12 +12,12 @@ const {
   updateAvatarUrl,
   // remove,
   uploadPictures
-} = require('./service')
-const { AVATAR_PATH, PICTURE_PATH } = require('../../util/file-path')
+} = require("./service")
+const { AVATAR_PATH, PICTURE_PATH } = require("../../util/file-path")
 // const { UPLOAD_ERROR } = require('../../util/error-type')
-const { APP_URL, APP_PORT } = require('../../app/config')
+const { APP_URL, APP_PORT } = require("../../app/config")
 
-const saveAvatarMulter = multer({ 
+const saveAvatarMulter = multer({
   dest: AVATAR_PATH,
   limits: {
     // 10m
@@ -25,16 +25,15 @@ const saveAvatarMulter = multer({
     files: 1
   },
   fileFilter: function (req, file, cb) {
-    if(!file.mimetype.indexOf('image')) {
+    if (!file.mimetype.indexOf("image")) {
       cb(null, true)
-    }else {
+    } else {
       cb(new Error("请上传图片"), false)
     }
   }
 })
 
-
-const savePicturesMulter = multer({ 
+const savePicturesMulter = multer({
   dest: PICTURE_PATH,
   limits: {
     // 20m
@@ -42,39 +41,42 @@ const savePicturesMulter = multer({
     files: 1
   },
   fileFilter: function (req, file, cb) {
-    if(!file.mimetype.indexOf('image')) {
+    if (!file.mimetype.indexOf("image")) {
       cb(null, true)
-    }else {
+    } else {
       cb(new Error("请上传图片"), false)
     }
   }
 })
 
-
 class UploadMiddleware {
   // 保存单个文件到服务器
   saveImg(name) {
-    return async (ctx, next) =>{
-      if(name === 'avatar') {
+    return async (ctx, next) => {
+      if (name === "avatar") {
         // 保存头像
-        await saveAvatarMulter.single(name)(ctx, next).catch(err =>{
-          ctx.status = 401
-          ctx.body = err.message
-        })
-      }else {
+        await saveAvatarMulter
+          .single(name)(ctx, next)
+          .catch((err) => {
+            ctx.status = 401
+            ctx.body = err.message
+          })
+      } else {
         const { momentId } = ctx.params
-        const list = await getInfo('picture', 'moment_id', momentId)
-        
-        if(list.length >= 9) {
+        const list = await getInfo("picture", "moment_id", momentId)
+
+        if (list.length >= 9) {
           ctx.status = 401
-          return ctx.body = "配图不能超过9个！"
+          return (ctx.body = "配图不能超过9个！")
         }
 
         // 保存配图
-        await savePicturesMulter.single(name)(ctx, next).catch(err =>{
-          ctx.status = 401
-          ctx.body = err.message
-        })
+        await savePicturesMulter
+          .single(name)(ctx, next)
+          .catch((err) => {
+            ctx.status = 401
+            ctx.body = err.message
+          })
       }
     }
   }
@@ -97,10 +99,10 @@ class UploadMiddleware {
   async resizeFile(ctx, next) {
     const file = ctx.req.file
     const { momentId } = ctx.params
-    jimp.read(file.path).then(res =>{
-      if(momentId) {
+    jimp.read(file.path).then((res) => {
+      if (momentId) {
         res.resize(300, jimp.AUTO).write(`${file.path}-y`)
-      }else {
+      } else {
         res.resize(300, 300).write(`${file.path}`)
       }
     })
@@ -128,22 +130,23 @@ class UploadMiddleware {
       // 获取原头像信息
       const result = await getInfo("avatar", "user_id", id)
 
-      if(result.length) {
+      if (result.length) {
         // 更新头像
         await updateAvatar(id, filename, mimetype, size)
-  
+
         // 服务器删除原头像
-        fs.unlink(path.join(AVATAR_PATH, `/${result[0].filename}`), error => {
-          if(error) console.log("用户头像删除失败", error);
+        fs.unlink(path.join(AVATAR_PATH, `/${result[0].filename}`), (error) => {
+          if (error) console.log("用户头像删除失败", error)
         })
-      }else {
+      } else {
         // 新建头像
         await createAvatar(id, filename, mimetype, size)
       }
 
       // 更新用户信息的头像地址
-      await updateAvatarUrl(`${APP_URL}:${APP_PORT}/user/${id}/avatar`, id)
-      ctx.body = { data: "上传头像成功", url: `${APP_URL}:${APP_PORT}/user/${id}/avatar` }
+      const url = `${APP_URL}:${APP_PORT}/user/${id}/avatar?${new Date().getTime()}`
+      await updateAvatarUrl(url, id)
+      ctx.body = { data: "上传头像成功", url }
     } catch (error) {
       ctx.body = error
     }
@@ -174,7 +177,7 @@ class UploadMiddleware {
       //     })
       //   }
       // }
-      
+
       // 上传新配图信息
       // for(let file of files) {
       //   const { filename, mimetype, size } = file
@@ -190,7 +193,6 @@ class UploadMiddleware {
       ctx.body = error
     }
   }
-
 }
 
 module.exports = new UploadMiddleware()

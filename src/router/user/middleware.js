@@ -164,6 +164,21 @@ class UserMiddleware {
       token
     }
   }
+
+  // 修改用户信息
+  async changeInfo(ctx, next) {
+    const { id } = ctx.user
+    const { nickname, signature } = ctx.request.body
+    if (typeof nickname !== "string" || typeof signature !== "string") return
+
+    if (nickname && nickname.length <= 10) {
+      await service.changeInfoService(id, "nickname", nickname)
+    }
+    if (signature && signature.length <= 30) {
+      await service.changeInfoService(id, "signature", signature)
+      ctx.body = "修改成功"
+    }
+  }
 }
 
 module.exports = new UserMiddleware()

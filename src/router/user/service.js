@@ -81,6 +81,16 @@ class UserService {
 
     return result[0]
   }
+
+  // 修改用户信息
+  async changeInfoService(id, type, value) {
+    const statement = `UPDATE users SET ${type} = ? WHERE id = ?`
+    try {
+      await connection.execute(statement, [value, id])
+    } catch (error) {
+      ctx.body = error.message
+    }
+  }
 }
 
 module.exports = new UserService()

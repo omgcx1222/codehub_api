@@ -119,11 +119,14 @@ class SocketMiddleware {
           // 根据聊天室id获取聊天室最新消息
           for (const item of currentUser.chatRoomIds) {
             const list = await selectRoomChat(item.id, 0, 1)
+            // console.log(item)
             if (item.name === "私聊") {
               const r = await selectRoomImg(item.id, currentUser.id)
-              item.name = r.nickname
-              item.avatarUrl = r.avatarUrl
+              // console.log(r)
+              item.name = r[0].nickname
+              item.img = r[0].avatarUrl
             }
+            // console.log(item)
             const roomInfo = { ...item, chats: list }
             chatRooms.push(roomInfo)
           }
