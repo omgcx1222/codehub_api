@@ -15,7 +15,7 @@ class UserService {
   }
 
   // 加入默认聊天室
-  async joinChat(id) {
+  async addRoom(id) {
     const statement = "INSERT INTO chats_users (chat_id, user_id) VALUES (?, ?)"
     try {
       const [result] = await connection.execute(statement, [1, id])
@@ -87,8 +87,9 @@ class UserService {
     const statement = `UPDATE users SET ${type} = ? WHERE id = ?`
     try {
       await connection.execute(statement, [value, id])
+      return "成功"
     } catch (error) {
-      ctx.body = error.message
+      return error.message
     }
   }
 }

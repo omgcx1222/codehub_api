@@ -59,7 +59,7 @@ class UserMiddleware {
     // 数据库操作
     await service.create(user)
     // 加入默认聊天室
-    await service.joinChat(user.id)
+    await service.addRoom(user.id)
 
     // 返回结果
     ctx.body = "注册成功"
@@ -171,13 +171,20 @@ class UserMiddleware {
     const { nickname, signature } = ctx.request.body
     if (typeof nickname !== "string" || typeof signature !== "string") return
 
+    let success = "修改成功"
     if (nickname && nickname.length <= 10) {
-      await service.changeInfoService(id, "nickname", nickname)
+      const res = await service.changeInfoService(id, "nickname", nickname)
+      if (res !== "成功") {
+        success = "昵称修改失败"
+      }
     }
     if (signature && signature.length <= 30) {
-      await service.changeInfoService(id, "signature", signature)
-      ctx.body = "修改成功"
+      const res = await service.changeInfoService(id, "signature", signature)
+      if (res !== "成功") {
+        success = "签名修改失败"
+      }
     }
+    ctx.body = success
   }
 }
 

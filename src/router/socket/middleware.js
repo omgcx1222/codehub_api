@@ -3,20 +3,22 @@ const jwt = require("jsonwebtoken")
 const { PUBLIC_KEY } = require("../../app/config")
 const {
   createChatRecord,
-  selectChatRecord,
   createChatRoom,
   roomAddUser,
   selectRoomImg,
   selectRoomIds,
-  selectRoomChat
+  selectRoomChat,
+  changeOffLineTime,
+  selectRoomTips,
+  selectRoomCount
 } = require("./serviec")
 const createUid = require("../../util/createUid")
 
 // 验证身份
-function verify(userInfo) {
-  if (!userInfo.token) {
+async function verify(userInfo) {
+  if (!userInfo?.token) {
     // 任意一个为空，说明用户上传的userInfo有问题，返回新的info
-    if (!userInfo.id || !userInfo.nickname || !userInfo.type) {
+    if (!userInfo?.id || !userInfo?.nickname || !userInfo?.type) {
       return {
         id: createUid(),
         nickname: "游客_" + Date.now(),
@@ -96,10 +98,10 @@ class SocketMiddleware {
        * message  发送信息时必传
        * roomId   发送群聊消息时必传/获取聊天记录必传
        * userId   发送私聊消息时必传
+       * isPrivate  第一次私聊时必传
        */
-      const { userInfo = {}, message = "", roomId, userId } = data
-
-      currentUser = verify(userInfo)
+      const { userInfo = {}, message = "", roomId, userId, isPrivate } = data
+      currentUser = await verify(userInfo)
       // 游客默认加入 id为1 的聊天群
       currentUser.chatRoomIds = onLineUsers[uid].userInfo?.chatRoomIds ?? [{ id: 1, name: "正能量聊天群" }]
       // 内存地址赋值
@@ -116,57 +118,72 @@ class SocketMiddleware {
             currentUser.chatRoomIds = await selectRoomIds(currentUser.id)
           }
 
-          // 根据聊天室id获取聊天室最新消息
+          // 根据聊天室id获取聊天室消息
           for (const item of currentUser.chatRoomIds) {
-            const list = await selectRoomChat(item.id, 0, 1)
-            // console.log(item)
+            const list = await selectRoomChat(item.id, 0, 1000)
+            // 查询聊天室人数
+            let count = await selectRoomCount(item.id)
+            // 消息通知
+            let tips = 0
+            if (!currentUser.type) {
+              const res = await selectRoomTips(item.id, currentUser.id)
+              tips = res[0].tips
+            }
+
             if (item.name === "私聊") {
+              count = 0
               const r = await selectRoomImg(item.id, currentUser.id)
               // console.log(r)
               item.name = r[0].nickname
               item.img = r[0].avatarUrl
+              item.type = "私聊"
             }
-            // console.log(item)
-            const roomInfo = { ...item, chats: list }
+            const roomInfo = { ...item, chats: list, tips, count }
             chatRooms.push(roomInfo)
           }
           assignSend(ctx, { type: "chatRooms", data: chatRooms })
           allSend({ type: "onLine", data: { onLineUsers: getOnLineInfo(), onLineUser: currentUser } })
           break
         // 获取聊天记录
-        case "getChatList":
-          const res = currentUser.chatRoomIds.find((item) => item.id === roomId)
-          if (res) {
-            // 直接获取1000条吧，懒得再做分页了
-            const list = await selectRoomChat(roomId, 0, 1000)
-            assignSend(ctx, { type: "getChatList", data: { roomId, list } })
-          }
-          break
+        // case "getChatList":
+        //   const room = currentUser.chatRoomIds.find((item) => item.id === roomId)
+        //   if (room) {
+        //     // 直接获取1000条吧，懒得再做分页了
+        //     const chats = await selectRoomChat(roomId, currentUser.id, 0, 1000)
+        //     let count = await selectRoomCount(roomId)
+        //     if (room.type === "私聊") {
+        //       count = 0
+        //     }
+        //     assignSend(ctx, { type: "getChatList", data: { ...room, chats, count } })
+        //   }
+        //   break
         // 发送群聊消息
-        case "sendPublicChat":
+        case "sendchatMessage":
           if (!currentUser.type) {
             // 内容和群聊id不能为空
             if (message && roomId) {
+              // 保存消息到服务器
               const result = await createChatRecord(currentUser.id, roomId, message)
               // 给所有聊天室成员发送这条信息
               Object.keys(onLineUsers).forEach((uid) => {
                 const u = onLineUsers[uid].userInfo.chatRoomIds?.find((item) => item.id == roomId)
                 // console.log(onLineUsers[uid].userInfo, roomId)
                 if (u) {
-                  const { id, nickname, avatarUrl = null } = currentUser
-                  const list = {
+                  const { id, nickname, avatar_url = null } = currentUser
+                  const chats = {
                     id: result.insertId,
                     message,
+                    isRead: 0,
                     author: {
                       userId: id,
                       nickname,
-                      avatarUrl: avatarUrl
+                      avatarUrl: avatar_url
                     },
                     createTime: new Date()
                   }
                   assignSend(onLineUsers[uid].ctx, {
                     type: "publicChat",
-                    data: { list, roomId }
+                    data: { chats, id: roomId }
                   })
                 }
               })
@@ -174,34 +191,57 @@ class SocketMiddleware {
           }
           break
         // 发送私聊消息
-        case "sendPrivateChat":
+        case "createRoom":
           if (!currentUser.type) {
             // 内容和用户id不能为空
-            if (message && userId) {
+            if (userId) {
               // 创建聊天室
               const room = await createChatRoom("私聊")
               // 添加聊天室成员
               await roomAddUser(currentUser.id, room.insertId)
               await roomAddUser(userId, room.insertId)
-              // 保存消息记录
-              const result = await createChatRecord(currentUser.id, room.insertId, message)
 
-              // 给私聊的对象（登录在线）发送消息
-              Object.keys(onLineUsers).some((user) => {
-                const u = onLineUsers[user].userInfo.chatRoomIds.find((item) => item.id == roomId)
-                if (u) {
-                  const { id, nickname, avatarUrl } = currentUser
-                  assignSend(onLineUsers[user].ctx, {
-                    type: "privateChat",
-                    // data: { id: result.insertId, message, userId: id, nickname, avatarUrl }
-                    data: {
-                      id: room.insertId,
-                      name: "私聊",
-                      chats: [{ id: result.insertId, message, userId: id, nickname, avatarUrl, createTime: new Date() }]
-                    }
-                  })
+              // console.log(r)
+              // 保存消息记录
+              // const result = await createChatRecord(currentUser.id, room.insertId, message)
+              // await createChatRecord(currentUser.id, room.insertId, message)
+              Object.keys(onLineUsers).forEach((uid) => {
+                if (onLineUsers[uid].userInfo.id === userId) {
+                  onLineUsers[uid].userInfo.chatRoomIds.push({ id: room.insertId, name: "私聊" })
+                  return
                 }
               })
+              currentUser.chatRoomIds.push({ id: room.insertId, name: "私聊" })
+              const r = await selectRoomImg(room.insertId, currentUser.id)
+              assignSend(ctx, {
+                type: "createRoom",
+                data: { roomId: room.insertId, name: r[0].nickname, img: r[0].avatarUrl }
+              })
+              // 给私聊的对象（登录在线）发送消息
+              // Object.keys(onLineUsers).some((user) => {
+              //   const u = onLineUsers[user].userInfo.chatRoomIds.find((item) => item.id == roomId)
+              //   if (u) {
+              //     const { id, nickname, avatar_url } = currentUser
+              //     assignSend(onLineUsers[user].ctx, {
+              //       type: "privateChat",
+              //       // data: { id: result.insertId, message, userId: id, nickname, avatarUrl }
+              //       data: {
+              //         id: room.insertId,
+              //         name: "私聊",
+              //         chats: [
+              //           {
+              //             id: result.insertId,
+              //             message,
+              //             userId: id,
+              //             nickname,
+              //             avatarUrl: avatar_url,
+              //             createTime: new Date()
+              //           }
+              //         ]
+              //       }
+              //     })
+              //   }
+              // })
             }
           }
           break
@@ -211,7 +251,11 @@ class SocketMiddleware {
     })
 
     // 关闭
-    ctx.websocket.on("close", async (state) => {
+    ctx.websocket.on("close", (state) => {
+      if (!currentUser.type) {
+        // 记录登录用户的下线时间（不用同步）
+        // changeOffLineTime(currentUser.id)
+      }
       delete onLineUsers[uid]
       allSend({ type: "offLine", data: { onLineUsers: getOnLineInfo() } })
     })

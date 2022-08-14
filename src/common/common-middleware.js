@@ -9,7 +9,7 @@ const {
   PARAMS_ERROR
 } = require("../util/error-type")
 
-const { permissionExist, momentExist, macExist } = require("./common-service")
+const { permissionExist, momentExist, macExist, userExist } = require("./common-service")
 
 class CommonMiddleware {
   // 验证token(失败不执行)
@@ -36,6 +36,7 @@ class CommonMiddleware {
   async verifyToken(ctx, next) {
     // 获取请求头中的token
     const authorization = ctx.request?.headers?.authorization ?? ""
+    if (typeof authorization !== "string") return
     const token = authorization.replace("Bearer ", "")
     // 验证token
     try {
@@ -89,6 +90,18 @@ class CommonMiddleware {
     if (!result.length) {
       return ctx.app.emit("error", new Error(COMMENT_EXIST), ctx)
     }
+
+    await next()
+  }
+
+  // 更新用户信息
+  async updateInfo(ctx, next) {
+    const result = await userExist("id", ctx.user.id)
+    if (!result.length) {
+      const err = new Error(errorType.USERNAME_IS_NULL)
+      return ctx.app.emit("error", err, ctx)
+    }
+    ctx.user = result[0]
 
     await next()
   }

@@ -24,66 +24,93 @@ class SocketService {
     }
   }
 
-  // 根据聊天室id查询聊天记录
-  async selectRoomChat(id, offset = 0, limit = 1) {
-    offset = String(offset)
-    limit = String(limit)
+  // 查询用户
+  async selectRoomTips(roomId, userId) {
     const statement = `
-      SELECT cl.id, cl.message, cl.createTime, 
-        JSON_OBJECT('userId', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url) author
-      FROM chats_list cl
-      LEFT JOIN users u ON u.id = cl.user_id
-      WHERE chat_id = ?
-      ORDER BY cl.createTime ${limit == 1 ? "DESC" : ""}
-      LIMIT ?, ?
+      SELECT
+        (SELECT COUNT(*) FROM chats_list cl WHERE cl.createTime > u.offLineTime AND cl.chat_id = ? AND cl.user_id != ?) tips
+      FROM users u 
+      WHERE u.id = ?
     `
     try {
-      const [result] = await connection.execute(statement, [id, offset, limit])
+      const [result] = await connection.execute(statement, [roomId, userId, userId])
       return result
     } catch (error) {
-      console.log(error.message)
       return error.message
     }
   }
 
-  // 查询聊天记录
-  async selectChatRecord(id) {
+  // 根据聊天室id查询聊天记录
+  async selectRoomChat(roomId, offset = 0, limit = 1) {
+    offset = String(offset)
+    limit = String(limit)
+    // isRead 0-未读 1-已读
+    const statement = `
+      SELECT cl.id, cl.message, cl.createTime, 
+        JSON_OBJECT('userId', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url) author,
+        0 isRead
+      FROM chats_list cl
+      LEFT JOIN users u ON u.id = cl.user_id
+      WHERE cl.chat_id = ?
+      ORDER BY cl.createTime ${limit == 1 ? "DESC" : ""}
+      LIMIT ?, ?
+    `
     try {
-      // 登录用户
-      if (id) {
-        const statement = `
-          SELECT cl.chat_id id, c.name,
-            JSON_ARRAYAGG(
-              JSON_OBJECT('id', cl.id, 'message', cl.message, 'userId', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url, 'createTime', cl.createTime)
-            ) chats
-          FROM chats_list cl
-          LEFT JOIN chats c ON c.id = cl.chat_id
-          LEFT JOIN users u ON u.id = cl.user_id
-          LEFT JOIN chats_users cu on cu.chat_id = cl.chat_id
-          WHERE cu.user_id = ?
-          GROUP BY cl.chat_id
-        `
-        const [result] = await connection.execute(statement, [id])
-        return result
-      } else {
-        const statement = `
-          SELECT cl.chat_id id, c.name,
-            JSON_ARRAYAGG(
-              JSON_OBJECT('id', cl.id, 'message', cl.message, 'userId', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url, 'createTime', cl.createTime)
-            ) chats
-          FROM chats_list cl
-          LEFT JOIN chats c ON c.id = cl.chat_id
-          LEFT JOIN users u ON u.id = cl.user_id
-          WHERE c.name = '正能量聊天群'
-          GROUP BY cl.chat_id
-        `
-        const [result] = await connection.execute(statement)
-        return result
-      }
+      const [result] = await connection.execute(statement, [roomId, offset, limit])
+      return result
     } catch (error) {
       return error.message
     }
   }
+
+  // async selectRoomChats(roomId) {
+  //   const statement = "SELECT id FROM chats_list cl WHERE cl.chat_id = ?"
+  //   try {
+  //     const [result] = await connection.execute(statement, [roomId])
+  //     return result
+  //   } catch (error) {
+  //     return error.message
+  //   }
+  // }
+
+  // 查询聊天记录
+  // async selectChatRecord(id) {
+  //   try {
+  //     // 登录用户
+  //     if (id) {
+  //       const statement = `
+  //         SELECT cl.chat_id id, c.name,
+  //           JSON_ARRAYAGG(
+  //             JSON_OBJECT('id', cl.id, 'message', cl.message, 'userId', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url, 'createTime', cl.createTime)
+  //           ) chats
+  //         FROM chats_list cl
+  //         LEFT JOIN chats c ON c.id = cl.chat_id
+  //         LEFT JOIN users u ON u.id = cl.user_id
+  //         LEFT JOIN chats_users cu on cu.chat_id = cl.chat_id
+  //         WHERE cu.user_id = ?
+  //         GROUP BY cl.chat_id
+  //       `
+  //       const [result] = await connection.execute(statement, [id])
+  //       return result
+  //     } else {
+  //       const statement = `
+  //         SELECT cl.chat_id id, c.name,
+  //           JSON_ARRAYAGG(
+  //             JSON_OBJECT('id', cl.id, 'message', cl.message, 'userId', u.id, 'nickname', u.nickname, 'avatarUrl', u.avatar_url, 'createTime', cl.createTime)
+  //           ) chats
+  //         FROM chats_list cl
+  //         LEFT JOIN chats c ON c.id = cl.chat_id
+  //         LEFT JOIN users u ON u.id = cl.user_id
+  //         WHERE c.name = '正能量聊天群'
+  //         GROUP BY cl.chat_id
+  //       `
+  //       const [result] = await connection.execute(statement)
+  //       return result
+  //     }
+  //   } catch (error) {
+  //     return error.message
+  //   }
+  // }
 
   // 创建聊天室
   async createChatRoom(name) {
@@ -107,12 +134,33 @@ class SocketService {
     }
   }
 
+  async selectRoomCount(roomId) {
+    const statement = "SELECT COUNT(*) count FROM chats_users cu WHERE cu.chat_id = ?"
+    try {
+      const [result] = await connection.execute(statement, [roomId])
+      return result[0].count
+    } catch (error) {
+      return error.message
+    }
+  }
+
   // 查询私聊的（对方）头像
   async selectRoomImg(roomId, userId) {
     const statement =
       "SELECT nickname, avatar_url avatarUrl FROM chats_users RIGHT JOIN users ON users.id = user_id WHERE chat_id = ? AND user_id != ?"
     try {
       const [result] = await connection.execute(statement, [roomId, userId])
+      return result
+    } catch (error) {
+      return error.message
+    }
+  }
+
+  // 记录登录用户的下线时间
+  async changeOffLineTime(userId) {
+    const statement = "UPDATE users SET offLineTime = ? WHERE id = ?"
+    try {
+      const [result] = await connection.execute(statement, [new Date(), userId])
       return result
     } catch (error) {
       return error.message
