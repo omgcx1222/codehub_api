@@ -10,7 +10,8 @@ const {
   selectRoomChat,
   changeOffLineTime,
   selectRoomTips,
-  selectRoomCount
+  selectRoomCount,
+  selectRoomExist
 } = require("./serviec")
 const createUid = require("../../util/createUid")
 
@@ -195,16 +196,22 @@ class SocketMiddleware {
           if (!currentUser.type) {
             // 内容和用户id不能为空
             if (userId) {
+              // 判断两人是否存在私聊
+              const roomExist = await selectRoomExist(currentUser.id, userId, "私聊")
+              if (roomExist) {
+                assignSend(ctx, {
+                  type: "createRoom",
+                  data: { roomId: roomExist }
+                })
+                return
+              }
               // 创建聊天室
               const room = await createChatRoom("私聊")
               // 添加聊天室成员
               await roomAddUser(currentUser.id, room.insertId)
               await roomAddUser(userId, room.insertId)
 
-              // console.log(r)
-              // 保存消息记录
-              // const result = await createChatRecord(currentUser.id, room.insertId, message)
-              // await createChatRecord(currentUser.id, room.insertId, message)
+              // 被私聊的用户如果在线，则变更chatRoomIds
               Object.keys(onLineUsers).forEach((uid) => {
                 if (onLineUsers[uid].userInfo.id === userId) {
                   onLineUsers[uid].userInfo.chatRoomIds.push({ id: room.insertId, name: "私聊" })
@@ -212,10 +219,9 @@ class SocketMiddleware {
                 }
               })
               currentUser.chatRoomIds.push({ id: room.insertId, name: "私聊" })
-              const r = await selectRoomImg(room.insertId, currentUser.id)
               assignSend(ctx, {
                 type: "createRoom",
-                data: { roomId: room.insertId, name: r[0].nickname, img: r[0].avatarUrl }
+                data: { roomId: room.insertId }
               })
               // 给私聊的对象（登录在线）发送消息
               // Object.keys(onLineUsers).some((user) => {

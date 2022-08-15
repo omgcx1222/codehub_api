@@ -24,6 +24,27 @@ class SocketService {
     }
   }
 
+  // 查询两个用户是否在同一个聊天室
+  async selectRoomExist(curId, userId, roomName) {
+    const statement = `
+      SELECT chat_id id, c.name
+      FROM chats_users cu
+      LEFT JOIN chats c ON c.id = cu.chat_id
+      WHERE (cu.user_id = ? OR cu.user_id = ?) AND c.name = ?
+      ORDER BY cu.chat_id
+    `
+    try {
+      const [result] = await connection.execute(statement, [curId, userId, roomName])
+      const isExist = result.find((item, index) => item.id === result[index + 1]?.id)
+      if (isExist) {
+        return isExist.id
+      }
+      return false
+    } catch (error) {
+      return error.message
+    }
+  }
+
   // 查询用户
   async selectRoomTips(roomId, userId) {
     const statement = `
@@ -134,6 +155,7 @@ class SocketService {
     }
   }
 
+  // 查询聊天室成员个数
   async selectRoomCount(roomId) {
     const statement = "SELECT COUNT(*) count FROM chats_users cu WHERE cu.chat_id = ?"
     try {
