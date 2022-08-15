@@ -46,20 +46,20 @@ class SocketService {
   }
 
   // 查询用户
-  async selectRoomTips(roomId, userId) {
-    const statement = `
-      SELECT
-        (SELECT COUNT(*) FROM chats_list cl WHERE cl.createTime > u.offLineTime AND cl.chat_id = ? AND cl.user_id != ?) tips
-      FROM users u 
-      WHERE u.id = ?
-    `
-    try {
-      const [result] = await connection.execute(statement, [roomId, userId, userId])
-      return result
-    } catch (error) {
-      return error.message
-    }
-  }
+  // async selectRoomTips(roomId, userId) {
+  //   const statement = `
+  //     SELECT
+  //       (SELECT COUNT(*) FROM chats_list cl WHERE cl.createTime > u.offLineTime AND cl.chat_id = ? AND cl.user_id != ?) tips
+  //     FROM users u
+  //     WHERE u.id = ?
+  //   `
+  //   try {
+  //     const [result] = await connection.execute(statement, [roomId, userId, userId])
+  //     return result
+  //   } catch (error) {
+  //     return error.message
+  //   }
+  // }
 
   // 根据聊天室id查询聊天记录
   async selectRoomChat(roomId, offset = 0, limit = 1) {
@@ -179,15 +179,15 @@ class SocketService {
   }
 
   // 记录登录用户的下线时间
-  async changeOffLineTime(userId) {
-    const statement = "UPDATE users SET offLineTime = ? WHERE id = ?"
-    try {
-      const [result] = await connection.execute(statement, [new Date(), userId])
-      return result
-    } catch (error) {
-      return error.message
-    }
-  }
+  // async changeOffLineTime(userId) {
+  //   const statement = "UPDATE users SET offLineTime = ? WHERE id = ?"
+  //   try {
+  //     const [result] = await connection.execute(statement, [new Date(), userId])
+  //     return result
+  //   } catch (error) {
+  //     return error.message
+  //   }
+  // }
 }
 
 module.exports = new SocketService()

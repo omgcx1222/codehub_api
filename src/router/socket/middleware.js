@@ -8,8 +8,6 @@ const {
   selectRoomImg,
   selectRoomIds,
   selectRoomChat,
-  changeOffLineTime,
-  selectRoomTips,
   selectRoomCount,
   selectRoomExist
 } = require("./serviec")
@@ -99,9 +97,8 @@ class SocketMiddleware {
        * message  发送信息时必传
        * roomId   发送群聊消息时必传/获取聊天记录必传
        * userId   发送私聊消息时必传
-       * isPrivate  第一次私聊时必传
        */
-      const { userInfo = {}, message = "", roomId, userId, isPrivate } = data
+      const { userInfo = {}, message = "", roomId, userId } = data
       currentUser = await verify(userInfo)
       // 游客默认加入 id为1 的聊天群
       currentUser.chatRoomIds = onLineUsers[uid].userInfo?.chatRoomIds ?? [{ id: 1, name: "正能量聊天群" }]
@@ -124,12 +121,6 @@ class SocketMiddleware {
             const list = await selectRoomChat(item.id, 0, 1000)
             // 查询聊天室人数
             let count = await selectRoomCount(item.id)
-            // 消息通知
-            let tips = 0
-            if (!currentUser.type) {
-              const res = await selectRoomTips(item.id, currentUser.id)
-              tips = res[0].tips
-            }
 
             if (item.name === "私聊") {
               count = 0
@@ -139,25 +130,12 @@ class SocketMiddleware {
               item.img = r[0].avatarUrl
               item.type = "私聊"
             }
-            const roomInfo = { ...item, chats: list, tips, count }
+            const roomInfo = { ...item, chats: list, count }
             chatRooms.push(roomInfo)
           }
           assignSend(ctx, { type: "chatRooms", data: chatRooms })
           allSend({ type: "onLine", data: { onLineUsers: getOnLineInfo(), onLineUser: currentUser } })
           break
-        // 获取聊天记录
-        // case "getChatList":
-        //   const room = currentUser.chatRoomIds.find((item) => item.id === roomId)
-        //   if (room) {
-        //     // 直接获取1000条吧，懒得再做分页了
-        //     const chats = await selectRoomChat(roomId, currentUser.id, 0, 1000)
-        //     let count = await selectRoomCount(roomId)
-        //     if (room.type === "私聊") {
-        //       count = 0
-        //     }
-        //     assignSend(ctx, { type: "getChatList", data: { ...room, chats, count } })
-        //   }
-        //   break
         // 发送群聊消息
         case "sendchatMessage":
           if (!currentUser.type) {
@@ -223,31 +201,6 @@ class SocketMiddleware {
                 type: "createRoom",
                 data: { roomId: room.insertId }
               })
-              // 给私聊的对象（登录在线）发送消息
-              // Object.keys(onLineUsers).some((user) => {
-              //   const u = onLineUsers[user].userInfo.chatRoomIds.find((item) => item.id == roomId)
-              //   if (u) {
-              //     const { id, nickname, avatar_url } = currentUser
-              //     assignSend(onLineUsers[user].ctx, {
-              //       type: "privateChat",
-              //       // data: { id: result.insertId, message, userId: id, nickname, avatarUrl }
-              //       data: {
-              //         id: room.insertId,
-              //         name: "私聊",
-              //         chats: [
-              //           {
-              //             id: result.insertId,
-              //             message,
-              //             userId: id,
-              //             nickname,
-              //             avatarUrl: avatar_url,
-              //             createTime: new Date()
-              //           }
-              //         ]
-              //       }
-              //     })
-              //   }
-              // })
             }
           }
           break
@@ -258,10 +211,6 @@ class SocketMiddleware {
 
     // 关闭
     ctx.websocket.on("close", (state) => {
-      if (!currentUser.type) {
-        // 记录登录用户的下线时间（不用同步）
-        // changeOffLineTime(currentUser.id)
-      }
       delete onLineUsers[uid]
       allSend({ type: "offLine", data: { onLineUsers: getOnLineInfo() } })
     })
