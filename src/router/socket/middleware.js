@@ -101,7 +101,8 @@ class SocketMiddleware {
       const { userInfo = {}, message = "", roomId, userId } = data
       currentUser = await verify(userInfo)
       // 游客默认加入 id为1 的聊天群
-      currentUser.chatRoomIds = onLineUsers[uid].userInfo?.chatRoomIds ?? [{ id: 1, name: "正能量聊天群" }]
+      // currentUser.chatRoomIds = onLineUsers[uid].userInfo?.chatRoomIds ?? [{ id: 1, name: "正能量聊天群" }]
+      currentUser.chatRoomIds = [{ id: 1, name: "正能量聊天群" }]
       // 内存地址赋值
       onLineUsers[uid].userInfo = currentUser
       // console.log(currentUser === onLineUsers[uid].userInfo)
@@ -118,6 +119,7 @@ class SocketMiddleware {
 
           // 根据聊天室id获取聊天室消息
           for (const item of currentUser.chatRoomIds) {
+            // 查询消息记录
             const list = await selectRoomChat(item.id, 0, 1000)
             // 查询聊天室人数
             let count = await selectRoomCount(item.id)
@@ -141,6 +143,10 @@ class SocketMiddleware {
           if (!currentUser.type) {
             // 内容和群聊id不能为空
             if (message && roomId) {
+              // 校验用户是否是聊天室成员
+              const userExist = currentUser.chatRoomIds.find((item) => item.id === roomId)
+              if (!userExist) return
+
               // 保存消息到服务器
               const result = await createChatRecord(currentUser.id, roomId, message)
               // 给所有聊天室成员发送这条信息

@@ -56,7 +56,11 @@ class CommonMiddleware {
   verifyPermission(tableName) {
     return async (ctx, next) => {
       const typeId = ctx.params[tableName + "Id"]
-      const { id } = ctx.user
+      const { id, username } = ctx.user
+      if (username === "root") {
+        await next()
+        return
+      }
       const result = await permissionExist(tableName, typeId, id)
 
       if (!result.length) {
