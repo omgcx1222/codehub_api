@@ -57,9 +57,9 @@ class UserMiddleware {
     const user = ctx.request.body
 
     // 数据库操作
-    await service.create(user)
+    const res = await service.create(user)
     // 加入默认聊天室
-    await service.addRoom(user.id)
+    await service.addRoom(res.insertId)
 
     // 返回结果
     ctx.body = "注册成功"

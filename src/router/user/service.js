@@ -10,7 +10,7 @@ class UserService {
       const [result] = await connection.execute(statement, [username, password, nickname])
       return result
     } catch (error) {
-      ctx.body = error
+      return error
     }
   }
 
@@ -21,7 +21,8 @@ class UserService {
       const [result] = await connection.execute(statement, [1, id])
       return result
     } catch (error) {
-      ctx.body = error
+      console.log(error.message)
+      return error
     }
   }
 
@@ -39,7 +40,7 @@ class UserService {
       const [result] = await connection.execute(statement, [followId, id])
       return result
     } catch (error) {
-      ctx.body = error
+      return error
     }
   }
 

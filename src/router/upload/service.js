@@ -1,4 +1,4 @@
-const connection = require('../../app/database')
+const connection = require("../../app/database")
 
 class UploadService {
   // 查询
@@ -8,10 +8,10 @@ class UploadService {
       const [result] = await connection.execute(statement, [id])
       return result
     } catch (error) {
-      return ctx.body = error.message
+      return error.message
     }
   }
-  
+
   // 更新用户头像信息
   async updateAvatar(userId, fileName, mimetype, size) {
     const statement = "UPDATE avatar SET filename = ?, mimetype = ?, size = ? WHERE user_id = ?"
