@@ -179,15 +179,15 @@ class SocketService {
   }
 
   // 记录登录用户的下线时间
-  // async changeOffLineTime(userId) {
-  //   const statement = "UPDATE users SET offLineTime = ? WHERE id = ?"
-  //   try {
-  //     const [result] = await connection.execute(statement, [new Date(), userId])
-  //     return result
-  //   } catch (error) {
-  //     return error.message
-  //   }
-  // }
+  async changeOffLineTime(userId) {
+    const statement = "UPDATE users SET offLineTime = ? WHERE id = ?"
+    try {
+      const [result] = await connection.execute(statement, [new Date(), userId])
+      return result
+    } catch (error) {
+      return error.message
+    }
+  }
 }
 
 module.exports = new SocketService()

@@ -9,7 +9,8 @@ const {
   selectRoomIds,
   selectRoomChat,
   selectRoomCount,
-  selectRoomExist
+  selectRoomExist,
+  changeOffLineTime
 } = require("./serviec")
 const createUid = require("../../util/createUid")
 
@@ -101,10 +102,12 @@ class SocketMiddleware {
       const { userInfo = {}, message = "", roomId, userId } = data
       currentUser = await verify(userInfo)
       // 游客默认加入 id为1 的聊天群
-      if (currentUser.type) {
-        currentUser.chatRoomIds = [{ id: 1, name: "正能量聊天群" }]
+      // 登录用户
+      if (!currentUser.type) {
+        // 查询用户所在聊天室(并保存，用于发送消息和获取消息时，验证是否属于群聊成员)
+        currentUser.chatRoomIds = await selectRoomIds(currentUser.id)
       } else {
-        currentUser.chatRoomIds = onLineUsers[uid].userInfo?.chatRoomIds
+        currentUser.chatRoomIds = [{ id: 1, name: "正能量聊天群" }]
       }
       // currentUser.chatRoomIds = onLineUsers[uid].userInfo?.chatRoomIds ?? [{ id: 1, name: "正能量聊天群" }]
       // 内存地址赋值
@@ -115,11 +118,6 @@ class SocketMiddleware {
         case "login":
           // 所有聊天室的聊天记录
           let chatRooms = []
-          // 登录用户
-          if (!currentUser.type) {
-            // 查询用户所在聊天室(并保存，用于发送消息和获取消息时，验证是否属于群聊成员)
-            currentUser.chatRoomIds = await selectRoomIds(currentUser.id)
-          }
 
           // 根据聊天室id获取聊天室消息
           for (const item of currentUser.chatRoomIds) {
@@ -222,6 +220,9 @@ class SocketMiddleware {
     // 关闭
     ctx.websocket.on("close", (state) => {
       delete onLineUsers[uid]
+      if (!currentUser.type) {
+        changeOffLineTime(currentUser.id)
+      }
       allSend({ type: "offLine", data: { onLineUsers: getOnLineInfo() } })
     })
   }
