@@ -101,8 +101,12 @@ class SocketMiddleware {
       const { userInfo = {}, message = "", roomId, userId } = data
       currentUser = await verify(userInfo)
       // 游客默认加入 id为1 的聊天群
+      if (currentUser.type) {
+        currentUser.chatRoomIds = [{ id: 1, name: "正能量聊天群" }]
+      } else {
+        currentUser.chatRoomIds = onLineUsers[uid].userInfo?.chatRoomIds
+      }
       // currentUser.chatRoomIds = onLineUsers[uid].userInfo?.chatRoomIds ?? [{ id: 1, name: "正能量聊天群" }]
-      currentUser.chatRoomIds = [{ id: 1, name: "正能量聊天群" }]
       // 内存地址赋值
       onLineUsers[uid].userInfo = currentUser
       // console.log(currentUser === onLineUsers[uid].userInfo)
