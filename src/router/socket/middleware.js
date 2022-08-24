@@ -219,10 +219,10 @@ class SocketMiddleware {
 
     // 关闭
     ctx.websocket.on("close", (state) => {
-      delete onLineUsers[uid]
       if (!currentUser.type) {
         changeOffLineTime(currentUser.id)
       }
+      delete onLineUsers[uid]
       allSend({ type: "offLine", data: { onLineUsers: getOnLineInfo() } })
     })
   }
