@@ -128,7 +128,7 @@ class UserMiddleware {
 
     // 颁发token
     const token = jwt.sign({ id, username, nickname, avatar_url, signature }, PRIVATE_KEY, {
-      expiresIn: 60 * 60 * 24,
+      expiresIn: 60 * 60 * 24 * 30, // 一个月
       // expiresIn: 10,
       algorithm: "RS256"
     })
