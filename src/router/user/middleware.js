@@ -124,7 +124,7 @@ class UserMiddleware {
   // 登录通过
   async login(ctx, next) {
     // 获取用户信息
-    const { id, username, nickname, avatar_url, signature } = ctx.user
+    const { id, username, nickname, avatar_url, signature, ip } = ctx.user
 
     // 颁发token
     const token = jwt.sign({ id, username, nickname, avatar_url, signature }, PRIVATE_KEY, {
@@ -153,6 +153,7 @@ class UserMiddleware {
     // 返回登录结果
     ctx.body = {
       id,
+      ip,
       username,
       nickname,
       avatarUrl: avatar_url,

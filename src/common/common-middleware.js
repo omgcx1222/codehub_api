@@ -109,6 +109,13 @@ class CommonMiddleware {
 
     await next()
   }
+
+  // 获取ip
+  async getIp(ctx, next) {
+    const ip = ctx.request.header["x-real-ip"] || ctx.request.ip || ""
+    ctx.user.ip = ip.replace("::ffff:", "")
+    await next()
+  }
 }
 
 module.exports = new CommonMiddleware()

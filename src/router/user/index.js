@@ -13,6 +13,8 @@ const {
   changeInfo
 } = require("./middleware")
 
+const { getIp } = require("../../common/common-middleware")
+
 const { verifyTokenVoid, updateInfo } = require("../../common/common-middleware")
 
 userRouter.post("/", verifyUser, passwordHandle, createUser) // 注册
@@ -20,7 +22,7 @@ userRouter.post("/follow", verifyTokenVoid, handleFollow) // 关注/取关
 userRouter.get("/:userId/avatar", getAvatar) // 查看头像
 userRouter.post("/info", verifyTokenVoid, changeInfo) // 修改用户信息
 
-userRouter.post("/login", verifyLogin, login) // 登录
+userRouter.post("/login", verifyLogin, getIp, login) // 登录
 userRouter.post("/token", verifyTokenVoid, updateInfo, login) // 刷新token
 
 module.exports = userRouter
