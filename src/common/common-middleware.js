@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken")
+const axios = require("axios")
 
 const { PUBLIC_KEY } = require("../app/config")
 const {
@@ -114,6 +115,14 @@ class CommonMiddleware {
   async getIp(ctx, next) {
     const ip = ctx.request.header["x-real-ip"] || ctx.request.ip || ""
     ctx.user.ip = ip.replace("::ffff:", "")
+
+    const res = await axios.get(`https://ipapi.co/${ctx.user.ip}/json/`)
+    const { country_name, region, city } = res.data
+
+    ctx.user.address = country_name
+    if (country_name === "China") {
+      address = region + " " + city
+    }
     await next()
   }
 }
